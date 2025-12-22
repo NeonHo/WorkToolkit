@@ -1,7 +1,7 @@
 from pdf2image import convert_from_path
 import os
 
-pdf_path = 'pdf_files/发票_山东电力技术发展中心有限公司泰安分公司.pdf'
+pdf_path = 'pdf_files/OFD阅读器（免费版）.pdf'
 path = './jpg_files'
 
 images = convert_from_path(pdf_path, dpi=800)
