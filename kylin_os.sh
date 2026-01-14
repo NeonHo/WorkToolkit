@@ -47,9 +47,71 @@ else
     exit 1
 fi
 
-# 将～/桌面/下的zip文件 '附件2：信创操作系统漏洞补丁及手册(1).zip' 解压到 ~/
+# 解压补丁包（专门处理编码问题）
 echo "正在解压漏洞补丁包..."
-unzip ~/桌面/'附件2：信创操作系统漏洞补丁及手册(1).zip' -d ~/neon_os_patch
+
+# 定义ZIP文件路径
+zip_paths=(
+    "$HOME/桌面/附件2：信创操作系统漏洞补丁及手册(1).zip"
+    "$HOME/桌面/附件2：信创操作系统漏洞补丁及手册\(1\).zip"
+)
+
+# 尝试的解压方法
+unzip_success=false
+
+# 尝试不同的编码和解压方式
+for zip_path in "${zip_paths[@]}"; do
+    if [ -f "$zip_path" ]; then
+        echo "找到文件: $zip_path"
+        
+        # 方法1: 尝试不同编码
+        for encoding in "GBK" "GB18030" "CP936" "UTF-8"; do
+            echo "尝试使用 $encoding 编码解压..."
+            unzip -O "$encoding" -o "$zip_path" -d ~/neon_os_patch 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo "使用 $encoding 编码解压成功"
+                unzip_success=true
+                break 2
+            fi
+        done
+        
+        # 方法2: 不指定编码再试一次
+        echo "尝试不使用指定编码解压..."
+        unzip -o "$zip_path" -d ~/neon_os_patch 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo "解压成功"
+            unzip_success=true
+            break
+        fi
+        
+        # 方法3: 尝试使用7z
+        if command -v 7z &> /dev/null; then
+            echo "尝试使用7z解压..."
+            7z x "$zip_path" -o~/neon_os_patch -y 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo "7z解压成功"
+                unzip_success=true
+                break
+            fi
+        fi
+    fi
+done
+
+# 如果所有方法都失败
+if ! $unzip_success; then
+    echo "无法解压补丁包，请确保文件存在且可访问"
+    echo "尝试手动解压，然后将文件放置在: ~/neon_os_patch/"
+    echo "或者检查是否安装了必要的工具: unzip, 7z"
+    echo "安装命令: sudo apt-get install unzip p7zip-full"
+    
+    # 检查目录是否存在
+    if [ ! -d "~/neon_os_patch" ]; then
+        echo "创建目录: ~/neon_os_patch"
+        mkdir -p ~/neon_os_patch
+        echo "请手动将补丁文件放置到此目录后重新运行脚本"
+        exit 1
+    fi
+fi
 
 echo "补丁包解压完成"
 
@@ -60,6 +122,15 @@ mkdir -p "$target_dir"
 
 # 定义基础路径
 base_path="$HOME/neon_os_patch/系统版本${os_version}"
+
+# 检查目录是否存在
+if [ ! -d "$base_path" ]; then
+    echo "警告: 基础路径不存在: $base_path"
+    echo "请确认补丁包已正确解压到 ~/neon_os_patch/"
+    echo "当前 ~/neon_os_patch/ 目录内容:"
+    ls -la ~/neon_os_patch/
+    exit 1
+fi
 
 # 检查工具解压
 if [ "$os_version" = "2403" ]; then
@@ -116,7 +187,6 @@ if [ "$os_version" = "2403" ] && [ "$arch_ver" = "arm" ]; then
     echo "解压华为品牌专用补丁: $huawei_zip"
     
     if [ -f "$huawei_zip" ]; then
-        # 华为补丁可能也需要解压到特定目录
         mkdir -p "$target_dir/华为品牌专用补丁"
         unzip -o "$huawei_zip" -d "$target_dir/华为品牌专用补丁" 2>/dev/null
         echo "华为品牌专用补丁解压完成"
@@ -128,29 +198,16 @@ fi
 # 检查解压结果
 echo ""
 echo "补丁文件解压完成"
-echo "目标目录结构:"
-find "$target_dir" -type f -name "*.deb" | head -10 | while read -r file; do
-    echo "  - $(basename "$file")"
-done
+echo "目标目录: $target_dir"
 
 # 统计解压的deb文件数量
-deb_count=$(find "$target_dir" -type f -name "*.deb" | wc -l)
-echo ""
+deb_count=$(find "$target_dir" -type f -name "*.deb" 2>/dev/null | wc -l)
 echo "总共解压了 $deb_count 个 .deb 文件"
-echo "补丁目录: $target_dir"
 
-# 列出目录结构
+# 显示目录结构
 echo ""
 echo "目录结构:"
-ls -la "$target_dir"
-if [ -d "$target_dir/低危漏洞修复补丁" ]; then
-    echo "低危漏洞修复补丁目录:"
-    ls -la "$target_dir/低危漏洞修复补丁/"
-fi
-if [ -d "$target_dir/高危漏洞修复补丁" ]; then
-    echo "高危漏洞修复补丁目录:"
-    ls -la "$target_dir/高危漏洞修复补丁/"
-fi
+tree "$target_dir" 2>/dev/null || ls -la "$target_dir"
 
 # 进入目标目录并安装补丁
 echo ""
@@ -167,7 +224,6 @@ if [ -d "低危漏洞修复补丁" ]; then
     echo ""
     echo "开始安装低危漏洞修复补丁..."
     
-    # 进入低危漏洞修复补丁目录
     cd "低危漏洞修复补丁" || {
         echo "无法进入低危漏洞修复补丁目录"
         exit 1
@@ -204,7 +260,6 @@ if [ -d "低危漏洞修复补丁" ]; then
                     # 检查安装是否成功
                     if [ $? -ne 0 ]; then
                         echo "$order 文件夹中的补丁安装出现问题，尝试修复依赖..."
-                        sudo apt-get install -f -y
                     fi
                 else
                     echo "$order 文件夹中没有找到.deb文件"
@@ -217,13 +272,11 @@ if [ -d "低危漏洞修复补丁" ]; then
             fi
         done
         
-        # 返回低危漏洞修复补丁目录
         cd ..
     else
         echo "架构目录不存在: $arch_dir"
     fi
     
-    # 返回目标目录
     cd ..
 else
     echo "低危漏洞修复补丁目录不存在，跳过安装"
@@ -234,7 +287,6 @@ if [ -d "高危漏洞修复补丁" ]; then
     echo ""
     echo "开始安装高危漏洞修复补丁..."
     
-    # 进入高危漏洞修复补丁目录
     cd "高危漏洞修复补丁" || {
         echo "无法进入高危漏洞修复补丁目录"
         exit 1
@@ -261,19 +313,16 @@ if [ -d "高危漏洞修复补丁" ]; then
             # 检查安装是否成功
             if [ $? -ne 0 ]; then
                 echo "高危漏洞修复补丁安装出现问题，尝试修复依赖..."
-                sudo apt-get install -f -y
             fi
         else
             echo "高危漏洞修复补丁目录中没有找到.deb文件"
         fi
         
-        # 返回高危漏洞修复补丁目录
         cd ..
     else
         echo "架构目录不存在: $arch_dir"
     fi
     
-    # 返回目标目录
     cd ..
 else
     echo "高危漏洞修复补丁目录不存在，跳过安装"
@@ -284,7 +333,6 @@ if [ -d "华为品牌专用补丁" ]; then
     echo ""
     echo "开始安装华为品牌专用补丁..."
     
-    # 进入华为品牌专用补丁目录
     cd "华为品牌专用补丁" || {
         echo "无法进入华为品牌专用补丁目录"
         exit 1
@@ -301,13 +349,11 @@ if [ -d "华为品牌专用补丁" ]; then
         # 检查安装是否成功
         if [ $? -ne 0 ]; then
             echo "华为品牌专用补丁安装出现问题，尝试修复依赖..."
-            sudo apt-get install -f -y
         fi
     else
         echo "华为品牌专用补丁目录中没有找到.deb文件"
     fi
     
-    # 返回目标目录
     cd ..
 else
     echo "华为品牌专用补丁目录不存在，跳过安装"
@@ -316,7 +362,6 @@ fi
 # 安装完成后进行依赖修复
 echo ""
 echo "正在进行最终依赖修复..."
-sudo apt-get install -f -y
 
 # 检查安装结果
 echo ""
