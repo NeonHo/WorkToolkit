@@ -24,5 +24,5 @@ buy_df['单据编号'] = buy_df.apply(lambda x: extract_numbers(x['单据编号'
 
 buy_df['采购订单'] = buy_df.apply(lambda x: extract_numbers(x['单据摘要']), axis=1)
 
-buy_df.to_csv('处理后采购类报账单.csv', index=False)
+buy_df.to_csv('excel_files/处理后采购类报账单.csv', index=False)
 print('done')
