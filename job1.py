@@ -20,7 +20,7 @@ def extract_numbers(input_string):
     matches = re.findall(pattern, input_string)
     return matches[0]
 
-buy_df['单据编号'] = buy_df.apply(lambda x: extract_numbers(x['单据编号']), axis=1)
+buy_df['中台编号'] = buy_df.apply(lambda x: extract_numbers(x['单据编号']), axis=1)
 
 buy_df['采购订单'] = buy_df.apply(lambda x: extract_numbers(x['单据摘要']), axis=1)
 
