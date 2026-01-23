@@ -63,7 +63,8 @@ def job_compare_tax(state_df: pd.DataFrame, in_df: pd.DataFrame):
         in_df_notna.loc[numeric_mask, '中台编号'] = numeric_values.astype('int64').astype('str')
         
     # 用中台编号进行inner join
-    buy_df = buy_df.merge(in_df_notna, left_on='中台编号', right_on='中台编号', how='inner')
+    in_df_notna.rename(columns={'*发票号码': '发票号码'}, inplace=True)
+    buy_df = buy_df.merge(in_df_notna, on=['中台编号', '发票号码'], how='inner')
 
     # 合计税额和可抵扣税额相对比
     tax_wrong = buy_df['合计税额'] != buy_df['可抵扣税额']
