@@ -1,7 +1,7 @@
 from pdf2image import convert_from_path
 import os
 
-pdf_path = 'pdf_files/OFD阅读器（免费版）.pdf'
+pdf_path = 'pdf_files/MX-C3582R_20070505_214441.pdf'
 path = './jpg_files'
 
 images = convert_from_path(pdf_path, dpi=800)
